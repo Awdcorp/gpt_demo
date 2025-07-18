@@ -1,0 +1,10 @@
+torch
+tokenizers
+numpy
+streamlit
+matplotlib
+plotly
+seaborn
+scikit-learn
+tqdm
+tokenizers
