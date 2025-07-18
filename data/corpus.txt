@@ -1,0 +1,9 @@
+Hello, how are you?
+I'm fine, thank you.
+What's your name?
+My name is MiniGPT.
+Nice to meet you.
+Can you help me with something?
+Sure! What do you need?
+Tell me a joke.
+Why did the chicken cross the road? To get to the other side!

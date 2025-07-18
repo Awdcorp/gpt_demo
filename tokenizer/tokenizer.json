@@ -1,0 +1,218 @@
+{
+  "version": "1.0",
+  "truncation": null,
+  "padding": null,
+  "added_tokens": [
+    {
+      "id": 0,
+      "content": "[PAD]",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 1,
+      "content": "[UNK]",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 2,
+      "content": "[CLS]",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 3,
+      "content": "[SEP]",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 4,
+      "content": "[MASK]",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    }
+  ],
+  "normalizer": null,
+  "pre_tokenizer": {
+    "type": "Whitespace"
+  },
+  "post_processor": null,
+  "decoder": null,
+  "model": {
+    "type": "BPE",
+    "dropout": null,
+    "unk_token": "[UNK]",
+    "continuing_subword_prefix": null,
+    "end_of_word_suffix": null,
+    "fuse_unk": false,
+    "byte_fallback": false,
+    "ignore_merges": false,
+    "vocab": {
+      "[PAD]": 0,
+      "[UNK]": 1,
+      "[CLS]": 2,
+      "[SEP]": 3,
+      "[MASK]": 4,
+      "!": 5,
+      "'": 6,
+      ",": 7,
+      ".": 8,
+      "?": 9,
+      "C": 10,
+      "G": 11,
+      "H": 12,
+      "I": 13,
+      "M": 14,
+      "N": 15,
+      "P": 16,
+      "S": 17,
+      "T": 18,
+      "W": 19,
+      "a": 20,
+      "c": 21,
+      "d": 22,
+      "e": 23,
+      "f": 24,
+      "g": 25,
+      "h": 26,
+      "i": 27,
+      "j": 28,
+      "k": 29,
+      "l": 30,
+      "m": 31,
+      "n": 32,
+      "o": 33,
+      "p": 34,
+      "r": 35,
+      "s": 36,
+      "t": 37,
+      "u": 38,
+      "w": 39,
+      "y": 40,
+      "th": 41,
+      "me": 42,
+      "ou": 43,
+      "you": 44,
+      "the": 45,
+      "Wh": 46,
+      "el": 47,
+      "in": 48,
+      "an": 49,
+      "at": 50,
+      "ame": 51,
+      "et": 52,
+      "ic": 53,
+      "id": 54,
+      "ke": 55,
+      "name": 56,
+      "re": 57,
+      "ro": 58,
+      "to": 59,
+      "What": 60,
+      "ell": 61
+    },
+    "merges": [
+      [
+        "t",
+        "h"
+      ],
+      [
+        "m",
+        "e"
+      ],
+      [
+        "o",
+        "u"
+      ],
+      [
+        "y",
+        "ou"
+      ],
+      [
+        "th",
+        "e"
+      ],
+      [
+        "W",
+        "h"
+      ],
+      [
+        "e",
+        "l"
+      ],
+      [
+        "i",
+        "n"
+      ],
+      [
+        "a",
+        "n"
+      ],
+      [
+        "a",
+        "t"
+      ],
+      [
+        "a",
+        "me"
+      ],
+      [
+        "e",
+        "t"
+      ],
+      [
+        "i",
+        "c"
+      ],
+      [
+        "i",
+        "d"
+      ],
+      [
+        "k",
+        "e"
+      ],
+      [
+        "n",
+        "ame"
+      ],
+      [
+        "r",
+        "e"
+      ],
+      [
+        "r",
+        "o"
+      ],
+      [
+        "t",
+        "o"
+      ],
+      [
+        "Wh",
+        "at"
+      ],
+      [
+        "el",
+        "l"
+      ]
+    ]
+  }
+}
