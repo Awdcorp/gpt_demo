@@ -17,7 +17,7 @@ tokenizer.pre_tokenizer = Whitespace()
 
 # 4. Define the training config
 trainer = BpeTrainer(
-    vocab_size=1000,
+    vocab_size=10000,
     min_frequency=2,
     special_tokens=["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]"]
 )

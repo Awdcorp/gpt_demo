@@ -1,9 +1,9 @@
 # config.py
 
 # Model architecture
-vocab_size   = 1000
+vocab_size   = 10000  
 embed_dim    = 64
-max_seq_len  = 32
+max_seq_len  = 64
 num_heads    = 4
 ff_dim       = 256
 num_layers   = 4
