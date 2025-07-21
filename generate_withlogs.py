@@ -1,15 +1,15 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-from tokenizer.tokenizer import GPTTokenizer
+from gpt2_tokenizer_wrapper import GPT2TokenizerWrapper
 from model.gpt_model import MiniGPT
 from config import (
     vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers,
     tokenizer_path, checkpoint_path
 )
-
 import datetime
 import os
+from collections import Counter
 
 # Prepare log file
 timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -21,7 +21,7 @@ def log(msg):
     log_lines.append(msg)
 
 # Load tokenizer
-tokenizer = GPTTokenizer(tokenizer_path)
+tokenizer = GPT2TokenizerWrapper()
 
 # Initialize model and load checkpoint
 model = MiniGPT(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers)
@@ -62,32 +62,38 @@ def render_attention_heatmap(attn_weights, tokens):
         log(f"{tokens[i]:>4} {row_vals}")
 
 # 🔁 Token selection logic
-def sample_next_token(logits, temperature=1.0, top_k=None, top_p=None):
+def sample_next_token(logits, temperature=1.0, top_k=None, top_p=None, token_ids_so_far=None, repetition_penalty=1.0):
+    # Apply repetition penalty
+    if repetition_penalty != 1.0 and token_ids_so_far:
+        token_counts = Counter(token_ids_so_far)
+        for token_id, count in token_counts.items():
+            logits[token_id] /= (repetition_penalty ** count)
+
+    # Apply temperature
     logits = logits / temperature
+
+    # Apply top-p sampling
+    if top_p is not None:
+        sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+        cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+        sorted_indices_to_remove = cumulative_probs > top_p
+        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+        sorted_indices_to_remove[..., 0] = False
+        logits[sorted_indices[sorted_indices_to_remove]] = -float("Inf")
+
+    # Apply top-k sampling
+    if top_k is not None:
+        topk_vals, topk_idx = torch.topk(logits, top_k)
+        logits = torch.full_like(logits, float('-inf'))
+        logits[topk_idx] = topk_vals
+
+    # Final token selection
     probs = F.softmax(logits, dim=-1)
+    return torch.multinomial(probs, num_samples=1).item()
 
-    if top_k:
-        topk_vals, topk_idx = torch.topk(probs, top_k)
-        topk_probs = topk_vals / torch.sum(topk_vals)
-        next_token = topk_idx[torch.multinomial(topk_probs, 1)]
-        return next_token.item()
-
-    if top_p:
-        sorted_probs, sorted_idx = torch.sort(probs, descending=True)
-        cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
-        mask = cumulative_probs > top_p
-        mask[..., 1:] = mask[..., :-1].clone()
-        mask[..., 0] = False
-        sorted_probs[mask] = 0
-        sorted_probs /= torch.sum(sorted_probs)
-        next_token = sorted_idx[torch.multinomial(sorted_probs, 1)]
-        return next_token.item()
-
-    return torch.argmax(probs).item()
-
-# 🔁 Generation loop with all logs
+# 🔁 Generation loop with full logs
 @torch.no_grad()
-def generate(prompt, max_new_tokens=30, temperature=1.0, top_k=None, top_p=None):
+def generate(prompt, max_new_tokens=30, temperature=1.0, top_k=None, top_p=None, repetition_penalty=1.0):
     input_ids = tokenizer.encode(prompt)
     log(f"\n📥 Input Prompt: {prompt}")
     log(f"🔢 Tokenized Input IDs: {input_ids}")
@@ -112,15 +118,22 @@ def generate(prompt, max_new_tokens=30, temperature=1.0, top_k=None, top_p=None)
         # 📊 Raw logits
         print_top_k_logits(next_token_logits[0], k=5)
 
-        # 🔍 Softmax token sampling
+        # 🔍 Softmax tokens
         print_top_k_tokens(next_token_logits[0], k=5)
 
-        # 🧠 Next token chosen
-        next_token_id = sample_next_token(next_token_logits[0], temperature, top_k, top_p)
+        # 🧠 Sample next token
+        next_token_id = sample_next_token(
+            next_token_logits[0],
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            token_ids_so_far=generated_ids,
+            repetition_penalty=repetition_penalty
+        )
         token_str = tokenizer.decode([next_token_id])
         log(f"[{step+1:02d}] 🧠 Chosen Token ID: {next_token_id} → '{token_str}'")
 
-        # 🧲 Attention heatmap
+        # 🧲 Attention
         if hasattr(model.backbone.blocks[-1].attn, 'attn_weights'):
             tokens_so_far = [tokenizer.decode([i]) for i in generated_ids]
             render_attention_heatmap(model.backbone.blocks[-1].attn.attn_weights, tokens_so_far)
@@ -136,7 +149,6 @@ def generate(prompt, max_new_tokens=30, temperature=1.0, top_k=None, top_p=None)
     log("🧾 Final Output Text:")
     log(final_output)
 
-    # 📝 Save full log
     with open(log_file_path, "w", encoding="utf-8") as f:
         f.write("\n".join(log_lines))
     log(f"\n📝 Full log saved to: {log_file_path}")
@@ -161,8 +173,18 @@ if __name__ == "__main__":
     temperature = input("Temperature? [default=1.0]: ").strip()
     temperature = float(temperature) if temperature else 1.0
 
+    repetition_penalty = input("Repetition penalty? [default=1.0]: ").strip()
+    repetition_penalty = float(repetition_penalty) if repetition_penalty else 1.0
+
     print("\n⏳ Generating with full trace...\n")
-    output = generate(prompt, max_new_tokens, temperature, top_k, top_p)
+    output = generate(
+        prompt,
+        max_new_tokens,
+        temperature=temperature,
+        top_k=top_k,
+        top_p=top_p,
+        repetition_penalty=repetition_penalty
+    )
 
     print("\n📝 Final Generated Text:\n")
     print(output)
