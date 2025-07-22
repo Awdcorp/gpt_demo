@@ -16,6 +16,6 @@ learning_rate = 5e-4     # Slightly higher to encourage faster convergence
 epochs = 10              # Should be enough, early stopping can help
 
 # Paths
-tokenizer_path = "gpt2"  # not used by code, but reference
+tokenizer_path = "tokenizer/tokenizer.json"  # not used by code, but reference
 corpus_path = "data/corpus.txt"
 checkpoint_path = "checkpoints/minigpt.pt"

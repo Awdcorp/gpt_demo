@@ -25,17 +25,27 @@ class GPTBackbone(nn.Module):
         # Final LayerNorm (pre-output)
         self.ln_f = nn.LayerNorm(embed_dim)
 
-    def forward(self, input_ids):
+    def forward(self, input_ids, return_attn=False):
         """
         input_ids: Tensor of shape (batch_size, seq_len)
-        returns: Tensor of shape (batch_size, seq_len, embed_dim)
+        return_attn: If True, return attention weights from each block
+        Returns:
+            - output embeddings: (B, T, C)
+            - attention_weights (optional): list of (B, H, T, T)
         """
         x = self.embedding(input_ids)  # (B, T, C)
+        attn_outputs = []
 
         for block in self.blocks:
-            x = block(x)
+            x, attn = block(x, return_attn=return_attn)
+            if return_attn:
+                attn_outputs.append(attn)
 
-        return self.ln_f(x)  # (B, T, C)
+        x = self.ln_f(x)
+
+        if return_attn:
+            return x, attn_outputs
+        return x
 
 class MiniGPT(nn.Module):
     """
@@ -47,22 +57,28 @@ class MiniGPT(nn.Module):
         self.backbone = GPTBackbone(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers, dropout)
         self.lm_head = nn.Linear(embed_dim, vocab_size, bias=False)  # Output logits
 
-    def forward(self, input_ids, labels=None):
+    def forward(self, input_ids, labels=None, return_attn=False):
         """
         input_ids: (B, T)
         labels (optional): (B, T) — ground-truth token IDs
+        return_attn (optional): If True, also return attention weights
 
         Returns:
             - logits: (B, T, vocab_size)
             - loss (if labels provided)
+            - attention_weights (if return_attn=True)
         """
-        x = self.backbone(input_ids)               # (B, T, C)
-        logits = self.lm_head(x)                   # (B, T, vocab_size)
+        if return_attn:
+            x, attn_weights = self.backbone(input_ids, return_attn=True)
+        else:
+            x = self.backbone(input_ids)
+            attn_weights = None
+
+        logits = self.lm_head(x)  # (B, T, vocab_size)
 
         if labels is not None:
-            # Flatten inputs for loss: (B*T, vocab)
             B, T, V = logits.shape
             loss = nn.functional.cross_entropy(logits.view(B*T, V), labels.view(B*T))
-            return logits, loss
+            return logits, loss, attn_weights
 
-        return logits, None
+        return logits, None, attn_weights

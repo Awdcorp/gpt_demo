@@ -6,9 +6,10 @@ st.title("🧠 MiniGPT Model Visualizer")
 
 # Sidebar stage selection
 stage = st.sidebar.radio("📌 Choose a Stage to Visualize", [
-    "Tokenizer",
     "Embeddings",
+    "Tokenizer",
     "Embedding Projections (PCA/t-SNE)",
+    "Embedding Evolution",  # ✅ NEW ENTRY
     "Transformer",
     "Step-by-Step Transformer",
     "Full Flow",
@@ -27,6 +28,10 @@ elif stage == "Embeddings":
 elif stage == "Embedding Projections (PCA/t-SNE)":
     from visualizations import visualize_embedding_projection
     visualize_embedding_projection.run()
+
+elif stage == "Embedding Evolution":
+    from visualizations import visualize_embedding_evolution
+    visualize_embedding_evolution.run()
 
 elif stage == "Transformer":
     from visualizations import visualize_transformer

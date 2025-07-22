@@ -16,7 +16,7 @@ import time
 # Optional debug mode
 TEST_MODE = False
 MAX_BATCHES = 300
-SAVE_EVERY = 1000  # More frequent saving for small dataset
+SAVE_EVERY = 300  # More frequent saving for small dataset
 
 # ✅ Dataset class
 class TextDataset(Dataset):
@@ -111,19 +111,32 @@ def train():
                 with open("training_log.txt", "a") as f:
                     f.write(msg + "\n")
 
+            # ✅ Save checkpoint and embedding snapshot every N batches
             if (batch_idx + 1) % SAVE_EVERY == 0:
+                # Save model checkpoint
                 partial_path = checkpoint_path.replace(".pt", f"_e{epoch+1}_b{batch_idx+1}.pt")
                 os.makedirs(os.path.dirname(partial_path), exist_ok=True)
                 torch.save(model.state_dict(), partial_path)
                 print(f"💾 Saved checkpoint: {partial_path}")
 
+                # Save embedding snapshot
+                embedding_matrix = model.backbone.embedding.token_embedding.weight.detach().cpu()
+                embed_path = f"checkpoints/embeddings_e{epoch+1}_b{batch_idx+1}.pt"
+                torch.save(embedding_matrix, embed_path)
+                print(f"📊 Saved embedding snapshot: {embed_path}")
+
         avg_loss = total_loss / (batch_idx + 1)
         print(f"🧠 Epoch {epoch+1}/{epochs} | Avg Train Loss: {avg_loss:.4f} | Time: {time.time() - start:.1f}s")
 
-        # ✅ Save final model each epoch
+        # ✅ Save final model checkpoint and embedding at end of epoch
         scheduler.step()
         torch.save(model.state_dict(), checkpoint_path)
-        print(f"✅ Model saved to: {checkpoint_path}")
+        print(f"✅ Final model saved to: {checkpoint_path}")
+
+        embedding_matrix = model.backbone.embedding.token_embedding.weight.detach().cpu()
+        embed_path = f"checkpoints/embeddings_e{epoch+1}_final.pt"
+        torch.save(embedding_matrix, embed_path)
+        print(f"📊 Final embedding snapshot saved: {embed_path}")
 
 # ✅ Entry point
 if __name__ == '__main__':

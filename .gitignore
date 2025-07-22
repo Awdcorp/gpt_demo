@@ -1,44 +1,38 @@
-# === Python ===
+# === Python Bytecode and Caches ===
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 *.so
 *.egg-info/
-*.log
 
-# === Virtual Environment ===
+# === Logs and Temporary Files ===
+*.log
+*.tmp
+*.bak
+
+# === Virtual Environments ===
 .venv/
 env/
 venv/
 
-# === Tokenizer Artifacts ===
-tokenizer/vocab.json
-tokenizer/merges.txt
-visualizations/tokenizer_output.json
-
-# === Model Checkpoints ===
-checkpoints/
-*.pt
-
-# === Streamlit Cache and Output ===
+# === Streamlit Cache ===
 .streamlit/
-*.pydevproject
-*.idea/
-*.vscode/
-*.DS_Store
 
-# === OS Files ===
+# === IDE and Project Files ===
+*.pydevproject
+.idea/
+.vscode/
+
+# visualizations/__pycache__/ tokenizer/__pycache__/ model/__pycache__/ __pycache__/
+# === OS Generated Files ===
+.DS_Store
 Thumbs.db
 ehthumbs.db
-.DS_Store
 
-# === Ignore outputs from run ===
+# === Output Artifacts ===
 *.png
 *.html
 *.csv
 *.json
-
-# === User Logs and Temporary Files ===
-*.tmp
-*.bak

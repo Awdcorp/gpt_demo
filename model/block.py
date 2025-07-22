@@ -31,13 +31,15 @@ class TransformerBlock(nn.Module):
         self.ln2 = nn.LayerNorm(embed_dim)
         self.ff = FeedForward(embed_dim, ff_dim, dropout)
 
-    def forward(self, x):
+    def forward(self, x, return_attn=False):
         # Attention with residual connection
-        attn_out = self.attn(self.ln1(x))
+        attn_out, attn_weights = self.attn(self.ln1(x), return_attn=True)
         x = x + attn_out
 
         # Feedforward with residual connection
         ff_out = self.ff(self.ln2(x))
         x = x + ff_out
 
+        if return_attn:
+            return x, attn_weights
         return x
