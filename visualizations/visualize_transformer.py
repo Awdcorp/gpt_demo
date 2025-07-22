@@ -28,7 +28,7 @@ def run():
     model.load_state_dict(torch.load(checkpoint_path, map_location=device))
     model.eval()
 
-    sentence = st.text_input("💬 Enter a sentence to visualize attention:", value="The cat sat on the mat.")
+    sentence = st.text_input("💬 Enter a sentence to visualize attention:", value="Hello, how are you?")
 
     if sentence:
         token_ids = tokenizer.encode(sentence)
@@ -37,7 +37,7 @@ def run():
         input_tensor = torch.tensor([token_ids], dtype=torch.long).to(device)
 
         with torch.no_grad():
-            _, _, attn_weights = model(input_tensor, return_attn=True)  # [Layers][B, H, T, T]
+            _, _, attn_weights, _ = model(input_tensor, return_attn=True)  # [Layers][B, H, T, T]
 
         num_attn_layers = len(attn_weights)
         layer = st.slider("📚 Select Layer", 0, num_attn_layers - 1, 0)
@@ -100,6 +100,43 @@ def run():
             with col2:
                 st.markdown(f"### 🎯 Layer {layer2} | Head {head2}")
                 st.plotly_chart(fig2, use_container_width=True)
+
+        # 🔁 Token pipeline chart inside expander
+        with st.expander("🔁 Token Pipeline View: Embedding → Attention", expanded=False):
+            selected_idx = st.slider("🎯 Select Token Index to Trace", 0, len(tokens)-1, 0)
+            st.markdown(f"### 🔎 Transformation of Token: `{decoded_tokens[selected_idx]}`")
+
+            # Get vectors
+            with torch.no_grad():
+                embed_vec = model.backbone.embedding(input_tensor)[0].cpu().numpy()  # [T, D]
+                x = embed_vec.copy()
+
+                for i in range(layer + 1):
+                    block = model.backbone.blocks[i]
+                    normed = block.ln1(torch.tensor(x).unsqueeze(0).to(device))
+                    attn_out, _ = block.attn(normed, return_attn=True)
+                    x = x + attn_out[0].cpu().numpy()  # residual added
+
+            # Pipeline vectors
+            vec_embed = embed_vec[selected_idx]
+            vec_attn = x[selected_idx]
+
+            df_pipe = pd.DataFrame({
+                "Component": [f"dim_{i}" for i in range(embed_dim)],
+                "Before Attention": vec_embed,
+                "After Attention": vec_attn
+            })
+
+            fig = px.line(df_pipe, x="Component", y=["Before Attention", "After Attention"], markers=True)
+            fig.update_layout(width=900, height=400)
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.markdown("""
+            #### 🧠 What this shows:
+            - 🔹 **Before Attention**: The static embedding of the token
+            - 🔸 **After Attention**: The token vector after attending to other tokens and adding residual
+            - You can compare how dimensions changed after contextual understanding
+            """)
 
         # ✅ Side-by-Side Comparison Table (interactive)
         st.markdown("### 🧩 Token-to-Token Attention Summary (Top Link Per Token)")

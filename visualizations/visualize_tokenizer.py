@@ -197,4 +197,107 @@ def run():
             for i, s in enumerate(steps):
                 st.markdown(f"**Step {i}**: {s}")
 
+     # --- Bonus: Token Merge Ancestry Graph ---
+    with st.expander("🧬 Token Merge Ancestry Graph"):
+        st.subheader("🧠 Token Merge Lineage Viewer")
+
+        base_sentence = "Hello, how are you?"
+        encoded = tokenizer.encode(base_sentence)
+
+        if os.path.exists("tokenizer/merges.txt") and os.path.exists("tokenizer/vocab.json"):
+            with open("tokenizer/merges.txt", "r", encoding="utf-8") as f:
+                merges = f.read().splitlines()[1:]
+            with open("tokenizer/vocab.json", "r", encoding="utf-8") as f:
+                vocab = json.load(f)
+
+            max_step = st.slider("🌀 Merge steps to include", 1, len(merges), 20)
+
+            import networkx as nx
+            token_graph = nx.DiGraph()
+            merge_steps = []
+
+            for step_num, line in enumerate(merges[:max_step]):
+                parts = line.strip().split()
+                if len(parts) != 2:
+                    continue
+                a, b = parts
+                merged = a + b
+                token_graph.add_edge(a, merged, step=step_num)
+                token_graph.add_edge(b, merged, step=step_num)
+                merge_steps.append((a, b, merged, step_num))
+
+            tokens_from_merges = {m[2] for m in merge_steps}
+            tokens_used = set(encoded.tokens)
+            all_vocab_tokens = set(vocab.keys())
+            tokens_to_visualize = tokens_from_merges.union(all_vocab_tokens)
+
+            token_origin = {}
+            for token in tokens_to_visualize:
+                if token in tokens_used:
+                    token_origin[token] = "used"
+                elif token in tokens_from_merges:
+                    token_origin[token] = "merged"
+                else:
+                    token_origin[token] = "base"
+
+            edges_to_draw = []
+            for token in tokens_to_visualize:
+                if token in token_graph:
+                    for pred in token_graph.predecessors(token):
+                        edges_to_draw.append((pred, token))
+
+            G = token_graph.edge_subgraph(edges_to_draw)
+            pos = nx.spring_layout(G, seed=42, dim=3)
+
+            x_nodes, y_nodes, z_nodes, labels, colors = [], [], [], [], []
+            for node, (x, y, z) in pos.items():
+                x_nodes.append(x)
+                y_nodes.append(y)
+                z_nodes.append(z)
+                labels.append(node)
+                if token_origin.get(node) == "used":
+                    colors.append("red")
+                elif token_origin.get(node) == "merged":
+                    colors.append("blue")
+                else:
+                    colors.append("yellow")
+
+            x_edges, y_edges, z_edges = [], [], []
+            for src, dst in G.edges():
+                x_edges += [pos[src][0], pos[dst][0], None]
+                y_edges += [pos[src][1], pos[dst][1], None]
+                z_edges += [pos[src][2], pos[dst][2], None]
+
+            fig = go.Figure()
+            fig.add_trace(go.Scatter3d(
+                x=x_edges, y=y_edges, z=z_edges,
+                mode='lines',
+                line=dict(color='gray', width=2),
+                name='Merge Path'
+            ))
+
+            fig.add_trace(go.Scatter3d(
+                x=x_nodes, y=y_nodes, z=z_nodes,
+                mode='markers+text',
+                text=labels,
+                textposition='top center',
+                marker=dict(size=6, color=colors),
+                name='Tokens'
+            ))
+
+            fig.update_layout(
+                title=f"🧬 Token Merge Lineage (Steps 1–{max_step})",
+                scene=dict(
+                    xaxis_title='X: Merge Influence',
+                    yaxis_title='Y: Semantic Grouping',
+                    zaxis_title='Z: Merge Depth'
+                ),
+                height=700,
+                margin=dict(l=0, r=0, b=0, t=30),
+                legend=dict(title="Legend")
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+
     st.success("✅ Now you fully understand what happened when you typed 'Hello'. Tokenization isn't magic — it's pattern-based compression!")

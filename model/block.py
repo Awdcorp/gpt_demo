@@ -1,5 +1,3 @@
-# gpt_model/model/block.py
-
 import torch
 import torch.nn as nn
 from model.attention import MultiHeadSelfAttention
@@ -31,15 +29,31 @@ class TransformerBlock(nn.Module):
         self.ln2 = nn.LayerNorm(embed_dim)
         self.ff = FeedForward(embed_dim, ff_dim, dropout)
 
-    def forward(self, x, return_attn=False):
-        # Attention with residual connection
+    def forward(self, x, return_attn=False, return_trace=False):
+        """
+        return_attn: return attention weights (for heatmaps)
+        return_trace: return intermediate outputs (attn_out, ffn_out)
+        """
+        # Attention block
+        residual = x
         attn_out, attn_weights = self.attn(self.ln1(x), return_attn=True)
-        x = x + attn_out
+        x = residual + attn_out
+        attn_output = x  # Store for trace
 
-        # Feedforward with residual connection
+        # FFN block
+        residual = x
         ff_out = self.ff(self.ln2(x))
-        x = x + ff_out
+        x = residual + ff_out
+        ffn_output = x  # Store for trace
+
+        if return_trace:
+            trace_outputs = {
+                "attn_out": attn_output.detach().cpu(),  # shape: (B, T, C)
+                "ffn_out": ffn_output.detach().cpu()
+            }
+            return x, attn_weights, trace_outputs
 
         if return_attn:
             return x, attn_weights
+
         return x

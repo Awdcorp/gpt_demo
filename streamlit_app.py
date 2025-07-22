@@ -8,13 +8,11 @@ st.title("🧠 MiniGPT Model Visualizer")
 stage = st.sidebar.radio("📌 Choose a Stage to Visualize", [
     "Embeddings",
     "Tokenizer",
-    "Embedding Projections (PCA/t-SNE)",
     "Embedding Evolution",  # ✅ NEW ENTRY
     "Transformer",
     "Feedforward Layer Visualizer",
-    "Step-by-Step Transformer",
+    "logits softmax",
     "Full Flow",
-    "Prediction + Logits"
 ])
 
 # Load and run the selected visual module
@@ -25,10 +23,6 @@ if stage == "Tokenizer":
 elif stage == "Embeddings":
     from visualizations import visualize_embeddings
     visualize_embeddings.run()
-
-elif stage == "Embedding Projections (PCA/t-SNE)":
-    from visualizations import visualize_embedding_projection
-    visualize_embedding_projection.run()
 
 elif stage == "Embedding Evolution":
     from visualizations import visualize_embedding_evolution
@@ -42,17 +36,13 @@ elif stage == "Feedforward Layer Visualizer":
     from visualizations import visualize_feedforward
     visualize_feedforward.run()
 
-elif stage == "Step-by-Step Transformer":
-    from visualizations import visualize_step_by_step
-    visualize_step_by_step.run()
+elif stage == "logits softmax":
+    from visualizations import visualize_logits_softmax
+    visualize_logits_softmax.run()
 
 elif stage == "Full Flow":
     from visualizations import visualize_full_flow
     visualize_full_flow.run()
-
-elif stage == "Prediction + Logits":
-    from visualizations import visualize_logits
-    visualize_logits.run()
 
 else:
     st.warning("❌ Invalid stage selected.")

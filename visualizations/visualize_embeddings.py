@@ -41,7 +41,8 @@ def run():
             fig = px.line(df, x="Dim", y="Value", title=f"📈 Embedding Vector for '{token}' (ID {token_id})")
             st.plotly_chart(fig, use_container_width=True)
 
-            st.code(vector.tolist(), language="json")
+            vector_str = np.array2string(vector, precision=6, separator=', ', suppress_small=True, max_line_width=150)
+            st.code(vector_str, language="json")
 
     # --- Section 2: Embeddings for Input Sentence ---
     st.header("📝 2. Visualize Embeddings for a Sentence")
@@ -151,7 +152,8 @@ def run():
 
     # 🔢 Updated vector values
     st.markdown("### 🔢 Updated Embedding Vector")
-    st.code(new_vector.tolist(), language="json")
+    vector_str1 = np.array2string(new_vector, precision=6, separator=', ', suppress_small=True, max_line_width=150)
+    st.code(vector_str1, language="json")
 
     # ✅ Explanation
     st.markdown(
