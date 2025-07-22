@@ -11,6 +11,7 @@ stage = st.sidebar.radio("📌 Choose a Stage to Visualize", [
     "Embedding Projections (PCA/t-SNE)",
     "Embedding Evolution",  # ✅ NEW ENTRY
     "Transformer",
+    "Feedforward Layer Visualizer",
     "Step-by-Step Transformer",
     "Full Flow",
     "Prediction + Logits"
@@ -36,6 +37,10 @@ elif stage == "Embedding Evolution":
 elif stage == "Transformer":
     from visualizations import visualize_transformer
     visualize_transformer.run()
+
+elif stage == "Feedforward Layer Visualizer":
+    from visualizations import visualize_feedforward
+    visualize_feedforward.run()
 
 elif stage == "Step-by-Step Transformer":
     from visualizations import visualize_step_by_step

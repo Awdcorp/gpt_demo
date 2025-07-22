@@ -25,6 +25,9 @@ venv/
 .idea/
 .vscode/
 
+#git rm --cached -r visualizations/__pycache__/ __pycache__ tokenizer/__pycache__/  model/__pycache__/
+#git commit -m "Clean tracked files ignored by .gitignore"
+
 # visualizations/__pycache__/ tokenizer/__pycache__/ model/__pycache__/ __pycache__/
 # === OS Generated Files ===
 .DS_Store
