@@ -67,19 +67,34 @@ class MiniGPT(nn.Module):
         self.backbone = GPTBackbone(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers, dropout)
         self.lm_head = nn.Linear(embed_dim, vocab_size, bias=False)  # Output logits
 
-    def forward(self, input_ids, labels=None, return_attn=False, return_trace=False):
+    def forward(self, input_ids, labels=None, return_attn=False, return_trace=False, return_vectors=False):
         """
-        input_ids: (B, T)
-        labels (optional): (B, T) — ground-truth token IDs
-        return_attn (optional): If True, also return attention weights
-        return_trace (optional): If True, return token vectors per block
+        return_vectors: Custom flag used by visualizers to get {'embedding', 'after_attn', 'after_ffn'}
+        """
 
-        Returns:
-            - logits: (B, T, vocab_size)
-            - loss (if labels provided)
-            - attention_weights (if return_attn=True)
-            - trace_outputs (if return_trace=True)
-        """
+        # === Main forward pass with trace ===
+        if return_vectors:
+            # Force trace to be captured
+            x, trace_outputs = self.backbone(input_ids, return_attn=return_attn, return_trace=True)
+            attn_weights = None
+
+            # Collect and return vectors in visualizer-friendly format
+            token_vectors = {
+                "embedding": self.backbone.embedding(input_ids),  # (B, T, D)
+                "after_attn": [layer["attn_out"] for layer in trace_outputs],  # List of (B, T, D)
+                "after_ffn": [layer["ffn_out"] for layer in trace_outputs],    # List of (B, T, D)
+            }
+
+            logits = self.lm_head(x)
+
+            if labels is not None:
+                B, T, V = logits.shape
+                loss = nn.functional.cross_entropy(logits.view(B * T, V), labels.view(B * T))
+                return logits, loss, attn_weights, token_vectors
+
+            return logits, token_vectors, attn_weights  # ✅ What your visualizer expects
+
+        # === Other existing behavior ===
         if return_trace:
             x, trace_outputs = self.backbone(input_ids, return_attn=return_attn, return_trace=True)
             attn_weights = None
@@ -91,11 +106,12 @@ class MiniGPT(nn.Module):
             attn_weights = None
             trace_outputs = None
 
-        logits = self.lm_head(x)  # (B, T, vocab_size)
+        logits = self.lm_head(x)
 
         if labels is not None:
             B, T, V = logits.shape
-            loss = nn.functional.cross_entropy(logits.view(B*T, V), labels.view(B*T))
+            loss = nn.functional.cross_entropy(logits.view(B * T, V), labels.view(B * T))
             return logits, loss, attn_weights, trace_outputs
 
         return logits, None, attn_weights, trace_outputs
+
