@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import os
 import numpy as np
-from tokenizer.tokenizer import GPTTokenizer
+from gpt2_tokenizer_wrapper import GPT2TokenizerWrapper
 from config import tokenizer_path, vocab_size, embed_dim
 from glob import glob
 from sklearn.decomposition import PCA
@@ -30,7 +30,7 @@ def run():
         This helps understand how the model is learning to represent words.
         """)
 
-    tokenizer = GPTTokenizer(tokenizer_path)
+    tokenizer = GPT2TokenizerWrapper()
     ckpt_paths = sorted(glob("checkpoints/embeddings_e*.pt"))
     if not ckpt_paths:
         st.warning("❌ No embedding checkpoints found in 'checkpoints/'")

@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import pandas as pd
 import plotly.express as px
-from tokenizer.tokenizer import GPTTokenizer
+from gpt2_tokenizer_wrapper import GPT2TokenizerWrapper
 from model.gpt_model import MiniGPT
 from config import *
 
@@ -23,7 +23,7 @@ def run():
         """)
 
     # Load tokenizer and model
-    tokenizer = GPTTokenizer(tokenizer_path)
+    tokenizer = GPT2TokenizerWrapper()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = MiniGPT(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers).to(device)
     model.load_state_dict(torch.load(checkpoint_path, map_location=device))
