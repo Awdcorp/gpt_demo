@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-from gpt2_tokenizer_wrapper import GPT2TokenizerWrapper
+from tokenizer.tokenizer import GPTTokenizer
 from model.gpt_model import MiniGPT
 from config import (
     vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers,
@@ -21,7 +21,7 @@ def log(msg):
     log_lines.append(msg)
 
 # Load tokenizer
-tokenizer = GPT2TokenizerWrapper()
+tokenizer = GPTTokenizer(tokenizer_path)
 
 # Initialize model and load checkpoint
 model = MiniGPT(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers)

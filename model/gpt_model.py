@@ -51,11 +51,15 @@ class GPTBackbone(nn.Module):
 
         x = self.ln_f(x)
 
-        if return_trace:
-            return x, trace_outputs
-        if return_attn:
-            return x, attn_outputs
-        return x
+        # Always return 3 values
+        if return_trace and return_attn:
+            return x, attn_outputs, trace_outputs
+        elif return_trace:
+            return x, None, trace_outputs
+        elif return_attn:
+            return x, attn_outputs, None
+        else:
+            return x, None, None
 
 class MiniGPT(nn.Module):
     """
@@ -74,11 +78,9 @@ class MiniGPT(nn.Module):
 
         # === Main forward pass with trace ===
         if return_vectors:
-            # Force trace to be captured
-            x, trace_outputs = self.backbone(input_ids, return_attn=return_attn, return_trace=True)
-            attn_weights = None
+            # Force both attention and trace to be captured
+            x, attn_weights, trace_outputs = self.backbone(input_ids, return_attn=True, return_trace=True)
 
-            # Collect and return vectors in visualizer-friendly format
             token_vectors = {
                 "embedding": self.backbone.embedding(input_ids),  # (B, T, D)
                 "after_attn": [layer["attn_out"] for layer in trace_outputs],  # List of (B, T, D)
@@ -92,19 +94,13 @@ class MiniGPT(nn.Module):
                 loss = nn.functional.cross_entropy(logits.view(B * T, V), labels.view(B * T))
                 return logits, loss, attn_weights, token_vectors
 
-            return logits, token_vectors, attn_weights  # ✅ What your visualizer expects
+            return logits, token_vectors, attn_weights
 
         # === Other existing behavior ===
-        if return_trace:
-            x, trace_outputs = self.backbone(input_ids, return_attn=return_attn, return_trace=True)
-            attn_weights = None
-        elif return_attn:
-            x, attn_weights = self.backbone(input_ids, return_attn=True)
-            trace_outputs = None
+        if return_trace or return_attn:
+            x, attn_weights, trace_outputs = self.backbone(input_ids, return_attn=return_attn, return_trace=return_trace)
         else:
-            x = self.backbone(input_ids)
-            attn_weights = None
-            trace_outputs = None
+            x, attn_weights, trace_outputs = self.backbone(input_ids)
 
         logits = self.lm_head(x)
 
@@ -114,4 +110,3 @@ class MiniGPT(nn.Module):
             return logits, loss, attn_weights, trace_outputs
 
         return logits, None, attn_weights, trace_outputs
-

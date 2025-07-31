@@ -1,0 +1,17 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  background-color: #111;
+  font-family: sans-serif;
+}
+#info {
+  position: absolute;
+  top: 10px;
+  left: 20px;
+  color: white;
+  font-size: 18px;
+  z-index: 100;
+}
+canvas {
+  display: block;
+}
