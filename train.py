@@ -2,8 +2,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 import torch.optim as optim
-#from tokenizer.tokenizer import GPTTokenizer
-from gpt2_tokenizer_wrapper import GPT2TokenizerWrapper
+from tokenizer.tokenizer import GPTTokenizer
 from model.gpt_model import MiniGPT
 from config import (
     vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers,
@@ -37,7 +36,7 @@ def train():
     print(f"🚀 Using device: {device}")
 
     # ✅ Load tokenizer and corpus
-    tokenizer = GPT2TokenizerWrapper()
+    tokenizer = GPTTokenizer(tokenizer_path)
     with open(corpus_path, "r", encoding="utf-8") as f:
         raw_text = f.read()
 
@@ -49,7 +48,8 @@ def train():
         if len(token_ids) > max_seq_len:
             token_ids = token_ids[:max_seq_len]
         else:
-            token_ids += [0] * (max_seq_len - len(token_ids))  # Pad
+            pad_token_id = tokenizer.encode("[PAD]")[0]
+            token_ids += [pad_token_id] * (max_seq_len - len(token_ids))  # Pad
         sequences.append(token_ids)
 
     if TEST_MODE:
@@ -65,7 +65,7 @@ def train():
     model = MiniGPT(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers).to(device)
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.95)
-    scaler = torch.cuda.amp.GradScaler(enabled=torch.cuda.is_available())
+    scaler = torch.amp.GradScaler("cuda" if torch.cuda.is_available() else "cpu")
 
     if os.path.exists(checkpoint_path):
         try:
@@ -91,13 +91,13 @@ def train():
 
             if torch.cuda.is_available():
                 with torch.cuda.amp.autocast():
-                    logits, loss = model(input_ids, labels)
+                    logits, loss, _, _ = model(input_ids, labels)
                 scaler.scale(loss).backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 scaler.step(optimizer)
                 scaler.update()
             else:
-                logits, loss = model(input_ids, labels)
+                logits, loss, _, _ = model(input_ids, labels)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
@@ -131,6 +131,7 @@ def train():
         # ✅ Save final model checkpoint and embedding at end of epoch
         scheduler.step()
         torch.save(model.state_dict(), checkpoint_path)
+        model.eval()
         print(f"✅ Final model saved to: {checkpoint_path}")
 
         embedding_matrix = model.backbone.embedding.token_embedding.weight.detach().cpu()

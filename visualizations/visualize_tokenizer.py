@@ -19,7 +19,7 @@ with open(DATA_PATH, "r", encoding="utf-8") as f:
     raw_corpus = f.read()
 
 def run():
-    st.header("🧠 How Tokenization Works (Step-by-Step)")
+    st.header("How Tokenization Works (Step-by-Step)")
 
     # Stage 0: Intro
     st.subheader("📘 What is Tokenization?")
@@ -73,7 +73,7 @@ def run():
         textposition="top center"
     )])
     fig3d_all.update_layout(
-        title="🫒 Full Corpus 3D View of Token IDs",
+        title="Full Corpus 3D View of Token IDs",
         scene=dict(
             xaxis_title="Token Index",
             yaxis_title="Token ID",
@@ -199,7 +199,7 @@ def run():
 
      # --- Bonus: Token Merge Ancestry Graph ---
     with st.expander("🧬 Token Merge Ancestry Graph"):
-        st.subheader("🧠 Token Merge Lineage Viewer")
+        st.subheader("Token Merge Lineage Viewer")
 
         base_sentence = "Hello, how are you?"
         encoded = tokenizer.encode(base_sentence)

@@ -1,36 +1,9 @@
-Hi
-I'm good, thank you!
-Hey
-All good here.
-Hello
-Couldn't be better.
-Nice to see you
-Just relaxing now.
-How's it going?
-I'm doing great.
-Good evening
-All good here.
-Hello
-Not bad at all.
-Hi
-I'm doing great.
-How's your day?
-Everything's fine.
-How's your day?
-Couldn't be better.
-Hello
-I'm good, thank you!
-How are you?
-Doing well, and you?
-Good evening
-All good here.
-How's it going?
-Just relaxing now.
-Hey
-All good here.
-What's up?
-Doing well, and you?
-Hi
-Couldn't be better.
-Good afternoon
-Not bad at all.
+Hello, how are you?
+I'm fine, thank you.
+What is your name?
+My name is GPT.
+Tell me a joke.
+Why did the chicken cross the road?
+To get to the other side.
+Nice to meet you.
+Goodbye! See you later.

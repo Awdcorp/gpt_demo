@@ -53,7 +53,7 @@ def generate(prompt, max_new_tokens=30, temperature=1.0, top_k=None, top_p=None)
         if input_ids.shape[1] >= max_seq_len:
             break
 
-        logits, _ = model(input_ids)
+        logits, _, _, _ = model(input_ids)
         next_token_logits = logits[:, -1, :]  # (1, vocab_size)
 
         # Choose next token

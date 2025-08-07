@@ -5,38 +5,45 @@ from model.block import TransformerBlock
 
 class GPTBackbone(nn.Module):
     """
-    Full GPT-style model backbone: embedding → N transformer blocks → LayerNorm.
-    Does not include the final language modeling (LM) head yet.
+    Full GPT-style model backbone:
+    - Embedding layer
+    - N stacked Transformer blocks
+    - Final LayerNorm
+
+    This excludes the final LM (language modeling) head.
     """
     def __init__(self, vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers, dropout=0.1):
         super().__init__()
 
-        # Embedding layer (token + position)
+        # === Embedding layer: token + position ===
         self.embedding = GPTEmbedding(vocab_size, embed_dim, max_seq_len)
 
-        # Stacked Transformer blocks
+        # === Stack of Transformer blocks ===
         self.blocks = nn.ModuleList([
             TransformerBlock(embed_dim, num_heads, ff_dim, dropout)
             for _ in range(num_layers)
         ])
 
-        # Final LayerNorm (pre-output)
+        # === Final layer norm before output ===
         self.ln_f = nn.LayerNorm(embed_dim)
 
     def forward(self, input_ids, return_attn=False, return_trace=False):
         """
-        input_ids: Tensor of shape (batch_size, seq_len)
-        return_attn: If True, return attention weights from each block
-        return_trace: If True, return intermediate outputs from each block
+        Args:
+            input_ids: Tensor (B, T)
+            return_attn: if True, returns attention weights from each block
+            return_trace: if True, returns intermediate vectors (for explainability)
+
         Returns:
-            - output embeddings: (B, T, C)
-            - attention_weights (optional): list of (B, H, T, T)
-            - trace_outputs (optional): list of dicts {'attn_out': ..., 'ffn_out': ...}
+            x: final hidden states (B, T, C)
+            attn_outputs: list of attention weights (B, H, T, T) per layer (optional)
+            trace_outputs: list of {'attn_out', 'ffn_out'} dicts per layer (optional)
         """
         x = self.embedding(input_ids)  # (B, T, C)
         attn_outputs = []
         trace_outputs = []
 
+        # === Pass through transformer blocks ===
         for block in self.blocks:
             if return_trace:
                 x, attn, trace = block(x, return_attn=True, return_trace=True)
@@ -51,7 +58,7 @@ class GPTBackbone(nn.Module):
 
         x = self.ln_f(x)
 
-        # Always return 3 values
+        # === Return outputs based on requested flags ===
         if return_trace and return_attn:
             return x, attn_outputs, trace_outputs
         elif return_trace:
@@ -63,28 +70,46 @@ class GPTBackbone(nn.Module):
 
 class MiniGPT(nn.Module):
     """
-    Full GPT model: embedding → blocks → final LayerNorm → LM head
-    Supports optional loss computation if labels are provided.
+    Full GPT model:
+    - Embedding
+    - Transformer blocks
+    - Final layer norm
+    - LM head for logits
+
+    Supports:
+    - Returning attention/trace outputs
+    - Returning per-layer vectors for visualizations
+    - Loss computation if labels are given
     """
     def __init__(self, vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers, dropout=0.1):
         super().__init__()
         self.backbone = GPTBackbone(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers, dropout)
-        self.lm_head = nn.Linear(embed_dim, vocab_size, bias=False)  # Output logits
+        self.lm_head = nn.Linear(embed_dim, vocab_size, bias=False)  # Final output logits
 
     def forward(self, input_ids, labels=None, return_attn=False, return_trace=False, return_vectors=False):
         """
-        return_vectors: Custom flag used by visualizers to get {'embedding', 'after_attn', 'after_ffn'}
-        """
+        Args:
+            input_ids: (B, T) input token IDs
+            labels: (B, T) target token IDs for loss computation
+            return_attn: return list of attention weights from each layer
+            return_trace: return intermediate layer outputs (attn/ffn)
+            return_vectors: return dict of {'embedding', 'after_attn', 'after_ffn'}
 
-        # === Main forward pass with trace ===
+        Returns:
+            logits: (B, T, V) raw token predictions
+            loss: optional, cross-entropy loss
+            attn_weights: optional list of attention matrices
+            trace_outputs: optional list of intermediate vectors or full token_vectors dict
+        """
+        # === Special visualization case: extract all internal vectors ===
         if return_vectors:
-            # Force both attention and trace to be captured
             x, attn_weights, trace_outputs = self.backbone(input_ids, return_attn=True, return_trace=True)
 
+            # Build token vector trace for all stages
             token_vectors = {
-                "embedding": self.backbone.embedding(input_ids),  # (B, T, D)
-                "after_attn": [layer["attn_out"] for layer in trace_outputs],  # List of (B, T, D)
-                "after_ffn": [layer["ffn_out"] for layer in trace_outputs],    # List of (B, T, D)
+                "embedding": self.backbone.embedding(input_ids),                     # (B, T, D)
+                "after_attn": [layer["attn_out"] for layer in trace_outputs],        # List of (B, T, D)
+                "after_ffn": [layer["ffn_out"] for layer in trace_outputs],          # List of (B, T, D)
             }
 
             logits = self.lm_head(x)
@@ -96,7 +121,7 @@ class MiniGPT(nn.Module):
 
             return logits, token_vectors, attn_weights
 
-        # === Other existing behavior ===
+        # === Regular forward with optional debug outputs ===
         if return_trace or return_attn:
             x, attn_weights, trace_outputs = self.backbone(input_ids, return_attn=return_attn, return_trace=return_trace)
         else:

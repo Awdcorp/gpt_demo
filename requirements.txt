@@ -1,10 +1,18 @@
-torch
-tokenizers
-numpy
-streamlit
-matplotlib
-plotly
-seaborn
-scikit-learn
-tqdm
-tokenizers
+# Core model & training
+torch>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+tqdm>=4.65.0
+
+# Tokenization
+tokenizers>=0.13.3
+transformers>=4.40.0
+
+# Visualization
+streamlit>=1.35.0
+plotly>=5.19.0
+pandas>=2.2.0
+networkx>=3.2.1
+
+# Optional but recommended
+matplotlib>=3.7.0  # for any future plotting

@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import numpy as np
 import pandas as pd
 import plotly.express as px
-from gpt2_tokenizer_wrapper import GPT2TokenizerWrapper
+from tokenizer.tokenizer import GPTTokenizer
 from model.gpt_model import MiniGPT
 from config import *
 import random
@@ -72,7 +72,7 @@ def run():
     sampling_method = st.sidebar.selectbox("Prediction Strategy", ["Greedy (Argmax)", "Sampled (Top-k/p)"])
 
     # Load tokenizer and model
-    tokenizer = GPT2TokenizerWrapper()
+    tokenizer = GPTTokenizer(tokenizer_path)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = MiniGPT(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers).to(device)
     model.load_state_dict(torch.load(checkpoint_path, map_location=device))

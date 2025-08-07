@@ -1,14 +1,18 @@
-# === Config that matches checkpoint ===
-
-vocab_size = 10000          # ✅ Match training tokenizer
-embed_dim = 64              # (unchanged)
-max_seq_len = 64            # ✅ Match checkpoint
-num_heads = 4               # (unchanged)
-ff_dim = 256                # ✅ Match checkpoint
-num_layers = 4              # (unchanged)
+# === Model Architecture ===
+vocab_size = 1000
+max_seq_len = 32
+embed_dim = 64
+num_heads = 4
+ff_dim = 256
+num_layers = 4
 dropout = 0.1
 
-# Paths
+# === Training Hyperparameters ===
+batch_size = 8
+learning_rate = 3e-4
+epochs = 5
+
+# === Paths ===
 tokenizer_path = "tokenizer/tokenizer.json"
 corpus_path = "data/corpus.txt"
-checkpoint_path = "checkpoints/minigpt_e1_b2000.pt"
+checkpoint_path = "checkpoints/minigpt.pt"
