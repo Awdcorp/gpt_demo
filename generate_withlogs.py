@@ -22,12 +22,19 @@ def log(msg):
 
 # Load tokenizer
 tokenizer = GPTTokenizer(tokenizer_path)
+#tokenizer = GPTTokenizer(tokenizer_path, trace=True, logger=log)
 
 #  EOT for real chat-style stopping (safe even if unused)
 try:
     EOT_ID = tokenizer.encode("[EOT]")[0]
 except Exception:
     EOT_ID = None
+
+#  EOS for standard end-of-sentence stopping
+try:
+    EOS_ID = tokenizer.encode("[EOS]")[0]
+except Exception:
+    EOS_ID = None
 
 # Initialize model and load checkpoint
 model = MiniGPT(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers)
@@ -55,17 +62,32 @@ def print_top_k_tokens(logits, k=5):
         prob = topk_vals[i].item()
         log(f"  {i+1}. Token ID: {tid} → '{token}' (prob={prob:.4f})")
 
-# 🎨 Render attention matrix as text heatmap
+# show probability of the chosen token
+def log_chosen_token_prob(logits, token_id):
+    probs = F.softmax(logits, dim=-1)
+    prob = probs[token_id].item()
+    log(f"   ↳ Probability of chosen token: {prob:.4f}")
+
+# >>> NEW TRACE — attention for all heads
 def render_attention_heatmap(attn_weights, tokens):
-    log("🧲 Attention Heatmap [Head 0]:")
-    attn = attn_weights[0, 0]  # [seq_len, seq_len]
-    attn = attn.detach().cpu().numpy()
-    tokens = [t.replace('\n', ' ') for t in tokens]
-    header = "     " + " ".join([f"{t:>5}" for t in tokens])
-    log(header)
-    for i, row in enumerate(attn):
-        row_vals = " ".join([f"{w:.2f}" for w in row])
-        log(f"{tokens[i]:>4} {row_vals}")
+    layer_attn = attn_weights[0]  # [heads, seq_len, seq_len]
+    tokens = [t.replace("\n", " ") for t in tokens]
+    for head_idx in range(layer_attn.size(0)):
+        log(f"🧲 Attention Heatmap — Head {head_idx}:")
+        attn = layer_attn[head_idx].detach().cpu().numpy()
+        header = "     " + " ".join([f"{t:>5}" for t in tokens])
+        log(header)
+        for i, row in enumerate(attn):
+            row_vals = " ".join([f"{w:.2f}" for w in row])
+            log(f"{tokens[i]:>4} {row_vals}")
+
+# >>> NEW TRACE — log embeddings for all tokens
+def log_all_embeddings(input_ids):
+    embed = model.backbone.embedding(input_ids)[0].detach().cpu().numpy()
+    log("🧬 Embedding Vectors (all tokens so far):")
+    for idx, vec in enumerate(embed):
+        token_str = tokenizer.decode([input_ids[0, idx].item()])
+        log(f"  Token {idx} '{token_str}': {vec}")
 
 # 🔁 Token selection logic
 def sample_next_token(logits, temperature=1.0, top_k=None, top_p=None, token_ids_so_far=None, repetition_penalty=1.0):
@@ -117,10 +139,7 @@ def generate(prompt, max_new_tokens=30, temperature=1.0, top_k=None, top_p=None,
         next_token_logits = logits[:, -1, :]
 
         # 🧬 Embedding vector (last token)
-        if hasattr(model.backbone, 'embedding'):
-            embed = model.backbone.embedding(input_ids)
-            log("🧬 Embedding Vector (last token):")
-            log(str(embed[0, -1, :].detach().cpu().numpy()))
+        log_all_embeddings(input_ids)
 
         # 📊 Raw logits
         print_top_k_logits(next_token_logits[0], k=5)
@@ -139,6 +158,7 @@ def generate(prompt, max_new_tokens=30, temperature=1.0, top_k=None, top_p=None,
         )
         token_str = tokenizer.decode([next_token_id])
         log(f"[{step+1:02d}] 🧠 Chosen Token ID: {next_token_id} → '{token_str}'")
+        log_chosen_token_prob(next_token_logits[0], next_token_id)
 
         # 🧲 Attention (prefer returned layers; keep old path as fallback)
         if attn_layers and len(attn_layers) > 0:
@@ -152,8 +172,9 @@ def generate(prompt, max_new_tokens=30, temperature=1.0, top_k=None, top_p=None,
 
         generated_ids.append(next_token_id)
 
-        # optional stop by EOT
-        if EOT_ID is not None and next_token_id == EOT_ID:
+        # optional stop by EOS or EOT
+        if ((EOT_ID is not None and next_token_id == EOT_ID) or
+            (EOS_ID is not None and next_token_id == EOS_ID)):
             break
 
         input_ids = torch.tensor([generated_ids])
@@ -175,31 +196,36 @@ if __name__ == "__main__":
     print("🧠 MiniGPT Generator — Explainable Mode")
     print("-" * 30)
 
-    prompt = input("Enter your prompt: ").strip()
-    max_new_tokens = input("How many tokens to generate? [default=30]: ").strip()
-    max_new_tokens = int(max_new_tokens) if max_new_tokens else 30
+    while True:
+        prompt = input("\nEnter your prompt (or 'exit' to quit): ").strip()
+        if prompt.lower() in {"exit", "quit"}:
+            print("👋 Exiting generator.")
+            break
 
-    top_k = input("Top-k sampling (enter number or leave blank): ").strip()
-    top_k = int(top_k) if top_k else None
+        max_new_tokens = input("How many tokens to generate? [default=30]: ").strip()
+        max_new_tokens = int(max_new_tokens) if max_new_tokens else 30
 
-    top_p = input("Top-p (nucleus) sampling, 0.0–1.0 (leave blank to disable): ").strip()
-    top_p = float(top_p) if top_p else None
+        top_k = input("Top-k sampling (enter number or leave blank): ").strip()
+        top_k = int(top_k) if top_k else None
 
-    temperature = input("Temperature? [default=1.0]: ").strip()
-    temperature = float(temperature) if temperature else 1.0
+        top_p = input("Top-p (nucleus) sampling, 0.0–1.0 (leave blank to disable): ").strip()
+        top_p = float(top_p) if top_p else None
 
-    repetition_penalty = input("Repetition penalty? [default=1.0]: ").strip()
-    repetition_penalty = float(repetition_penalty) if repetition_penalty else 1.0
+        temperature = input("Temperature? [default=1.0]: ").strip()
+        temperature = float(temperature) if temperature else 1.0
 
-    print("\n⏳ Generating with full trace...\n")
-    output = generate(
-        prompt,
-        max_new_tokens,
-        temperature=temperature,
-        top_k=top_k,
-        top_p=top_p,
-        repetition_penalty=repetition_penalty
-    )
+        repetition_penalty = input("Repetition penalty? [default=1.0]: ").strip()
+        repetition_penalty = float(repetition_penalty) if repetition_penalty else 1.0
 
-    print("\n📝 Final Generated Text:\n")
-    print(output)
+        print("\n⏳ Generating with full trace...\n")
+        output = generate(
+            prompt,
+            max_new_tokens,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            repetition_penalty=repetition_penalty
+        )
+
+        print("\n📝 Final Generated Text:\n")
+        print(output)

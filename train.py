@@ -17,6 +17,21 @@ TEST_MODE = False
 MAX_BATCHES = 300
 SAVE_EVERY = 300  # More frequent saving for small dataset
 
+# Track model version
+VERSION_FILE = "checkpoints/model_version.txt"
+
+def get_next_version():
+    """Reads current version from file and increments it."""
+    if os.path.exists(VERSION_FILE):
+        with open(VERSION_FILE, "r") as f:
+            current_version = int(f.read().strip())
+    else:
+        current_version = 0
+    new_version = current_version + 1
+    with open(VERSION_FILE, "w") as f:
+        f.write(str(new_version))
+    return new_version
+
 # ✅ Dataset class
 class TextDataset(Dataset):
     def __init__(self, sequences):
@@ -34,6 +49,9 @@ class TextDataset(Dataset):
 def train():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"🚀 Using device: {device}")
+
+    # ✅ Get next model version at start of training
+    model_version = get_next_version()
 
     # ✅ Load tokenizer and corpus
     tokenizer = GPTTokenizer(tokenizer_path)
@@ -147,6 +165,11 @@ def train():
         torch.save(model.state_dict(), checkpoint_path)
         model.eval()
         print(f"✅ Final model saved to: {checkpoint_path}")
+
+        # ✅ Save versioned checkpoint at end of training
+        versioned_path = f"checkpoints/minigpt_v{model_version}.pt"
+        torch.save(model.state_dict(), versioned_path)
+        print(f"🗂 Versioned model saved as: {versioned_path}")
 
         embedding_matrix = model.backbone.embedding.token_embedding.weight.detach().cpu()
         embed_path = f"checkpoints/embeddings_e{epoch+1}_final.pt"

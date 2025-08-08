@@ -107,22 +107,26 @@ if __name__ == "__main__":
     print("🧠 MiniGPT Text Generator")
     print("-" * 30)
 
-    prompt = input("Enter your prompt: ").strip()
+    while True:
+        prompt = input("\nEnter your prompt (or 'exit' to quit): ").strip()
+        if prompt.lower() in {"exit", "quit"}:
+            print("👋 Exiting generator.")
+            break
 
-    max_new_tokens = input("How many tokens to generate? [default=30]: ").strip()
-    max_new_tokens = int(max_new_tokens) if max_new_tokens else 30
+        max_new_tokens = input("How many tokens to generate? [default=30]: ").strip()
+        max_new_tokens = int(max_new_tokens) if max_new_tokens else 30
 
-    top_k = input("Top-k sampling (enter number or leave blank): ").strip()
-    top_k = int(top_k) if top_k else None
+        top_k = input("Top-k sampling (enter number or leave blank): ").strip()
+        top_k = int(top_k) if top_k else None
 
-    top_p = input("Top-p (nucleus) sampling (0.0–1.0, leave blank if unused): ").strip()
-    top_p = float(top_p) if top_p else None
+        top_p = input("Top-p (nucleus) sampling (0.0–1.0, leave blank if unused): ").strip()
+        top_p = float(top_p) if top_p else None
 
-    temperature = input("Temperature? [default=1.0]: ").strip()
-    temperature = float(temperature) if temperature else 1.0
+        temperature = input("Temperature? [default=1.0]: ").strip()
+        temperature = float(temperature) if temperature else 1.0
 
-    print("\n⏳ Generating...\n")
-    output = generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k, top_p=top_p)
+        print("\n⏳ Generating...\n")
+        output = generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k, top_p=top_p)
 
-    print("📝 Generated:\n")
-    print(output)
+        print("📝 Generated:\n")
+        print(output)
