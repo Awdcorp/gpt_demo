@@ -116,7 +116,10 @@ class MiniGPT(nn.Module):
 
             if labels is not None:
                 B, T, V = logits.shape
-                loss = nn.functional.cross_entropy(logits.view(B * T, V), labels.view(B * T))
+                loss = nn.functional.cross_entropy(
+                    logits.view(B * T, V), labels.view(B * T),
+                    ignore_index=-100  # ignore PAD/ignored labels
+                )
                 return logits, loss, attn_weights, token_vectors
 
             return logits, token_vectors, attn_weights
@@ -131,7 +134,10 @@ class MiniGPT(nn.Module):
 
         if labels is not None:
             B, T, V = logits.shape
-            loss = nn.functional.cross_entropy(logits.view(B * T, V), labels.view(B * T))
+            loss = nn.functional.cross_entropy(
+                logits.view(B * T, V), labels.view(B * T),
+                ignore_index=-100  # ignore PAD/ignored labels
+            )
             return logits, loss, attn_weights, trace_outputs
 
         return logits, None, attn_weights, trace_outputs

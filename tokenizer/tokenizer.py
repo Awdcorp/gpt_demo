@@ -52,7 +52,7 @@ if __name__ == "__main__":
     trainer = BpeTrainer(
         vocab_size=1000,  # Target vocabulary size
         min_frequency=1,  # Minimum frequency of a token to be included
-        special_tokens=["[PAD]", "[UNK]"]  # Add standard special tokens
+        special_tokens=["[PAD]", "[UNK]", "[EOS]", "[SYS]", "[USR]", "[AST]", "[EOT]"]  #  add chat-style special tokens for real-model SFT compatibility
     )
 
     # === Train the tokenizer on the corpus ===

@@ -26,8 +26,8 @@ class TextDataset(Dataset):
         return self.data.size(0)
 
     def __getitem__(self, idx):
-        x = self.data[idx]
-        y = x.clone()
+        x = self.data[idx][:-1]      # all tokens except last → model input
+        y = self.data[idx][1:]       # all tokens except first → prediction target
         return x, y
 
 # ✅ Training function
@@ -40,16 +40,21 @@ def train():
     with open(corpus_path, "r", encoding="utf-8") as f:
         raw_text = f.read()
 
+    # compute pad id once
+    pad_token_id = tokenizer.encode("[PAD]")[0]
+
     # ✅ Line-by-line tokenization + padding
     lines = [line.strip() for line in raw_text.strip().split("\n") if line.strip()]
     sequences = []
     for line in lines:
+        # tokenization
         token_ids = tokenizer.encode(line)
-        if len(token_ids) > max_seq_len:
-            token_ids = token_ids[:max_seq_len]
+
+        target_seq_len = max_seq_len + 1  # to allow shifting
+        if len(token_ids) > target_seq_len:
+            token_ids = token_ids[:target_seq_len]
         else:
-            pad_token_id = tokenizer.encode("[PAD]")[0]
-            token_ids += [pad_token_id] * (max_seq_len - len(token_ids))  # Pad
+            token_ids += [pad_token_id] * (target_seq_len - len(token_ids))  # Pad
         sequences.append(token_ids)
 
     if TEST_MODE:
@@ -65,20 +70,23 @@ def train():
     model = MiniGPT(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers).to(device)
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.95)
-    scaler = torch.amp.GradScaler("cuda" if torch.cuda.is_available() else "cpu")
+    scaler = torch.cuda.amp.GradScaler(enabled=torch.cuda.is_available())  # >>> FIX: safe AMP init
+
+    # ensure checkpoint dir exists
+    os.makedirs(os.path.dirname(checkpoint_path) or ".", exist_ok=True)
 
     if os.path.exists(checkpoint_path):
         try:
             print(f"📦 Resuming from {checkpoint_path}")
-            model.load_state_dict(torch.load(checkpoint_path))
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
         except RuntimeError as e:
             print(f"⚠️ Checkpoint mismatch: {e}\n🔁 Starting from scratch.")
 
     print(f"📊 Model Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     # ✅ Training loop
-    model.train()
     for epoch in range(epochs):
+        model.train()
         total_loss = 0.0
         start = time.time()
 
@@ -87,7 +95,12 @@ def train():
                 break
 
             input_ids, labels = [b.to(device) for b in batch]
-            optimizer.zero_grad()
+
+            # mask PAD in labels so loss ignores them
+            labels = labels.clone()
+            labels[labels == pad_token_id] = -100
+
+            optimizer.zero_grad(set_to_none=True)
 
             if torch.cuda.is_available():
                 with torch.cuda.amp.autocast():
@@ -108,20 +121,21 @@ def train():
             if batch_idx % 1 == 0:
                 msg = f"[Epoch {epoch+1}] Batch {batch_idx+1}/{len(train_loader)} | Loss: {loss.item():.4f}"
                 print("  " + msg)
-                with open("training_log.txt", "a") as f:
+                with open("training_log.txt", "a", encoding="utf-8") as f:
                     f.write(msg + "\n")
 
             # ✅ Save checkpoint and embedding snapshot every N batches
             if (batch_idx + 1) % SAVE_EVERY == 0:
                 # Save model checkpoint
                 partial_path = checkpoint_path.replace(".pt", f"_e{epoch+1}_b{batch_idx+1}.pt")
-                os.makedirs(os.path.dirname(partial_path), exist_ok=True)
+                os.makedirs(os.path.dirname(partial_path) or ".", exist_ok=True)
                 torch.save(model.state_dict(), partial_path)
                 print(f"💾 Saved checkpoint: {partial_path}")
 
                 # Save embedding snapshot
                 embedding_matrix = model.backbone.embedding.token_embedding.weight.detach().cpu()
                 embed_path = f"checkpoints/embeddings_e{epoch+1}_b{batch_idx+1}.pt"
+                os.makedirs(os.path.dirname(embed_path) or ".", exist_ok=True)
                 torch.save(embedding_matrix, embed_path)
                 print(f"📊 Saved embedding snapshot: {embed_path}")
 

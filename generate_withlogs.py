@@ -23,6 +23,12 @@ def log(msg):
 # Load tokenizer
 tokenizer = GPTTokenizer(tokenizer_path)
 
+#  EOT for real chat-style stopping (safe even if unused)
+try:
+    EOT_ID = tokenizer.encode("[EOT]")[0]
+except Exception:
+    EOT_ID = None
+
 # Initialize model and load checkpoint
 model = MiniGPT(vocab_size, embed_dim, max_seq_len, num_heads, ff_dim, num_layers)
 model.load_state_dict(torch.load(checkpoint_path, map_location="cpu"))
@@ -106,7 +112,8 @@ def generate(prompt, max_new_tokens=30, temperature=1.0, top_k=None, top_p=None,
         if input_ids.shape[1] >= max_seq_len:
             break
 
-        logits, _, _, _ = model(input_ids)
+        # get attention weights properly
+        logits, _, attn_layers, _ = model(input_ids, return_attn=True)
         next_token_logits = logits[:, -1, :]
 
         # 🧬 Embedding vector (last token)
@@ -133,14 +140,22 @@ def generate(prompt, max_new_tokens=30, temperature=1.0, top_k=None, top_p=None,
         token_str = tokenizer.decode([next_token_id])
         log(f"[{step+1:02d}] 🧠 Chosen Token ID: {next_token_id} → '{token_str}'")
 
-        # 🧲 Attention
-        if hasattr(model.backbone.blocks[-1].attn, 'attn_weights'):
+        # 🧲 Attention (prefer returned layers; keep old path as fallback)
+        if attn_layers and len(attn_layers) > 0:
+            tokens_so_far = [tokenizer.decode([i]) for i in generated_ids]
+            render_attention_heatmap(attn_layers[-1], tokens_so_far)
+        elif hasattr(model.backbone.blocks[-1].attn, 'attn_weights'):
             tokens_so_far = [tokenizer.decode([i]) for i in generated_ids]
             render_attention_heatmap(model.backbone.blocks[-1].attn.attn_weights, tokens_so_far)
 
         log("—" * 40)
 
         generated_ids.append(next_token_id)
+
+        # optional stop by EOT
+        if EOT_ID is not None and next_token_id == EOT_ID:
+            break
+
         input_ids = torch.tensor([generated_ids])
 
     final_output = tokenizer.decode(generated_ids)
